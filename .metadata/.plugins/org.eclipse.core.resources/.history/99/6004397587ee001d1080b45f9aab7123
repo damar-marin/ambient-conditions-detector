@@ -1,0 +1,689 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2023 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "bmp280.h"
+
+#define IDLE 0
+#define MT 1 //Medir temperatura
+#define MH 2 //Medir humedad
+#define MP 3 //Medir presión
+#define ML 4 //Medir luz
+
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+ADC_HandleTypeDef hadc1;
+
+I2C_HandleTypeDef hi2c1;
+
+/* USER CODE BEGIN PV */
+BMP280_HandleTypedef bmp280; //handler for sensor
+int STATE = IDLE;
+uint8_t previousState = 0;
+float temperature = 0;
+float humidity = 0;
+float pressure = 0;
+float light = 0;
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_ADC1_Init(void);
+static void MX_I2C1_Init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+  HAL_I2C_Init(&hi2c1);
+
+  bmp280_init_default_params(&bmp280.params);
+  bmp280.addr = BMP280_I2C_ADDRESS_0;
+  bmp280.i2c= &hi2c1;
+  if (bmp280_init(&bmp280, &bmp280.params)) {
+  	bool bme280p = bmp280.id == BME280_CHIP_ID;
+  }
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_ADC1_Init();
+  MX_I2C1_Init();
+  /* USER CODE BEGIN 2 */
+HAL_ADC_Start(&hadc1);
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+	switch (STATE) {
+		case IDLE: //No hace nada
+			HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 0);
+			HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 0);
+			HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+			HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+			HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+			HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+			HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+			break;
+
+		case MT: //Va a medir temperatura.
+			//Empezar nuestro código para el caso medir temp.
+			//Pedir el valor al sensor
+
+			bmp280_read_float(&bmp280,&temperature,&pressure,&humidity);
+
+			if(temperature < 0){
+				//no enciende ningún LED
+			} else if (temperature > 0 && temperature <= 10){
+				//enciendo el primer LED verde
+				HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+				HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 0);
+				HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+				HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+				HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+				HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+				HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+			} else if (temperature > 10 && temperature <=21){
+				// enciendo 1V y 2V
+				HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+				HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+				HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+				HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+				HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+				HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+				HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+			} else if (temperature > 21 && temperature <=23){
+				// enciendo 1v, 2V y 1A
+				HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+				HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+				HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+				HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+				HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+				HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+				HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+			} else if (temperature > 23 && temperature <=25){
+				// 1V 2V 1A 2A
+				HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+				HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+				HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+				HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+				HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+				HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+				HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+			} else if (temperature > 25 && temperature <=27){
+				HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+				HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+				HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+				HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+				HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+				HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+				HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+
+				// 1V 2V 1A 2A 1R
+			} else if (temperature > 27){
+				// 1V 2V 1A 2A 1R 2R
+				HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+				HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+				HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+				HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+				HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+				HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 1);
+
+				HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+
+			} else {
+				//NO PRENDER NINGUNO
+			}
+
+			break;
+
+		case MH: //Va a medir humedad.
+
+			bmp280_read_float(&bmp280,&temperature,&pressure,&humidity);
+
+			if(humidity < 0){
+							//no enciende ningún LED
+						} else if (humidity > 0 && humidity <= 20){
+							//enciendo el primer LED verde
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 0);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (humidity > 20 && humidity <=40){
+							// enciendo 1V y 2V
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (humidity > 40 && humidity <=60){
+							// enciendo 1v, 2V y 1A
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (humidity > 60 && humidity <=80){
+							// 1V 2V 1A 2A
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (humidity > 80 && humidity <100){
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+							// 1V 2V 1A 2A 1R
+						} else if (humidity > 100){
+							// 1V 2V 1A 2A 1R 2R
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 1);
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+
+						} else {
+							//NO PRENDER NINGUNO
+						}
+					break;
+
+		case MP: //Va a medir presión.
+
+			bmp280_read_float(&bmp280,&temperature,&pressure,&humidity);
+
+			if(pressure < 300){
+										//no enciende ningún LED
+									} else if (pressure >= 300 && pressure <= 500){
+										//enciendo el primer LED verde
+										HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+										HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 0);
+										HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+										HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+										HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+										HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+										HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+									} else if (pressure > 500 && pressure <=700){
+										// enciendo 1V y 2V
+										HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+										HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+										HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+										HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+										HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+										HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+										HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+									} else if (pressure > 700 && pressure <=900){
+										// enciendo 1v, 2V y 1A
+										HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+										HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+										HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+										HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+										HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+										HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+										HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+									} else if (pressure > 900 && pressure <=1000){
+										// 1V 2V 1A 2A
+										HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+										HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+										HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+										HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+										HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+										HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+										HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+									} else if (pressure > 1000 && pressure <=1100){
+										HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+										HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+										HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+										HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+										HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+										HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+										HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+
+										// 1V 2V 1A 2A 1R
+									} else if (pressure > 1100){
+										// 1V 2V 1A 2A 1R 2R
+										HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+										HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+										HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+										HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+										HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+										HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 1);
+
+										HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+									}
+
+					break;
+
+		case ML: //Va a medir luz.
+			HAL_ADC_PollForConversion(&hadc1, 100);
+			light = HAL_ADC_GetValue(&hadc1);
+
+			if(light < 200){
+							//no enciende ningún LED
+				HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 0);
+				HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 0);
+				HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+				HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+				HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+				HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+				HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+			} else if (light > 200 && light <= 500){
+							//enciendo el primer LED verde
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 0);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (light > 500 && light <=1500){
+							// enciendo 1V y 2V
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 0);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (light > 1500 && light <=2500){
+							// enciendo 1v, 2V y 1A
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 0);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (light > 2500 && light <=3000){
+							// 1V 2V 1A 2A
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 0);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 0);
+
+						} else if (light > 3000 && light <=3500){
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 0);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+
+							// 1V 2V 1A 2A 1R
+						} else if (light > 3500){
+							// 1V 2V 1A 2A 1R 2R
+							HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, 1);
+							HAL_GPIO_WritePin(LED_2V_GPIO_Port, LED_2V_Pin, 1);
+							HAL_GPIO_WritePin(LED_1A_GPIO_Port, LED_1A_Pin, 1);
+							HAL_GPIO_WritePin(LED_2A_GPIO_Port, LED_2A_Pin, 1);
+							HAL_GPIO_WritePin(LED_1R_GPIO_Port, LED_1R_Pin, 1);
+							HAL_GPIO_WritePin(LED_2R_GPIO_Port, LED_2R_Pin, 1);
+
+							HAL_GPIO_WritePin(BUZZER_GPIO_Port, BUZZER_Pin, 1);
+
+						} else {
+							//NO PRENDER NINGUNO
+						}
+					break;
+		default:
+
+			break;
+	}
+
+  }
+  /* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  ADC_ChannelConfTypeDef sConfig = {0};
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  hadc1.Instance = ADC1;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
+  hadc1.Init.DiscontinuousConvMode = DISABLE;
+  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc1.Init.NbrOfConversion = 1;
+  if (HAL_ADC_Init(&hadc1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Regular Channel
+  */
+  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN ADC1_Init 2 */
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, BUZZER_Pin|LED_2R_Pin|LED_1R_Pin|LED_2A_Pin
+                          |LED_1A_Pin|LED_2V_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LED_1V_GPIO_Port, LED_1V_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : BUZZER_Pin LED_2R_Pin LED_1R_Pin LED_2A_Pin
+                           LED_1A_Pin LED_2V_Pin */
+  GPIO_InitStruct.Pin = BUZZER_Pin|LED_2R_Pin|LED_1R_Pin|LED_2A_Pin
+                          |LED_1A_Pin|LED_2V_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : LED_1V_Pin */
+  GPIO_InitStruct.Pin = LED_1V_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LED_1V_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : BTN_LUZ_Pin BTN_HUM_Pin BTN_TEMP_Pin BTN_ONOFF_Pin */
+  GPIO_InitStruct.Pin = BTN_LUZ_Pin|BTN_HUM_Pin|BTN_TEMP_Pin|BTN_ONOFF_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+
+}
+
+/* USER CODE BEGIN 4 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	 if (GPIO_Pin == BTN_TEMP_Pin) {
+	        previousState = STATE;
+	        STATE = MT;
+	    } else if (GPIO_Pin == BTN_HUM_Pin) {
+	        previousState = STATE;
+	        STATE = MH;
+	    } else if (GPIO_Pin == BTN_LUZ_Pin) {
+	        previousState = STATE;
+	        STATE = ML;
+	    } else if (GPIO_Pin == BTN_ONOFF_Pin) {
+	        if (STATE == IDLE) {
+	            // Regresar al estado anterior si se presiona BTN_ONOFF y STATE es IDLE
+	            STATE = previousState;
+	        } else {
+	            previousState = STATE;
+	            STATE = IDLE;
+	        }
+	    }
+}
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */

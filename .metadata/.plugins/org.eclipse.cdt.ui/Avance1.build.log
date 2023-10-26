@@ -1,0 +1,10 @@
+20:56:18 **** Incremental Build of configuration Debug for project Avance1 ****
+make -j8 all 
+arm-none-eabi-size   Avance1.elf 
+   text	   data	    bss	    dec	    hex	filename
+  29500	     20	   1772	  31292	   7a3c	Avance1.elf
+Finished building: default.size.stdout
+ 
+
+20:56:19 Build Finished. 0 errors, 0 warnings. (took 242ms)
+

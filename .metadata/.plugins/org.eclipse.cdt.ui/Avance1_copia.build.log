@@ -1,0 +1,10 @@
+20:56:21 **** Incremental Build of configuration Debug for project Avance1_copia ****
+make -j8 all 
+arm-none-eabi-size   Avance1_copia.elf 
+   text	   data	    bss	    dec	    hex	filename
+  29032	     20	   1780	  30832	   7870	Avance1_copia.elf
+Finished building: default.size.stdout
+ 
+
+20:56:22 Build Finished. 0 errors, 0 warnings. (took 247ms)
+
